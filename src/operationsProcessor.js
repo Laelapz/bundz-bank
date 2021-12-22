@@ -62,7 +62,6 @@ class OperationsProcessor {
           this.historic[`${operation.operationId}`] = operation;
         }
       }
-    
 
       if( operation.type === "CANCEL"){
         const teste = this.cancel(operation);
@@ -171,9 +170,15 @@ class OperationsProcessor {
     }
 
     if(operation.operation.type === "TRANSFER"){
-     const { from, to} = this.getAccountFromTransfer(operation.operation);
+     const { from, to } = this.getAccountFromTransfer(operation.operation);
+
+      if( !from ){
+        console.log("conta de envio inválida");
+        return;  
+      }
+
       console.log("cancelando uma transferencia");
-      return this.transferencia(to, from, operation.operation.quantity);
+      return this.cancelTransfer(to, from, operation.operation.quantity);
     }
   }
 
@@ -196,6 +201,28 @@ class OperationsProcessor {
     console.log(`Saldo depois: ${this.accounts[`${operation.account}-${operation.agency}`].balance}`);
     return operation.operationId;
 
+  }
+
+  cancelTransfer(from, to, quantity){
+    console.log("\nFazendo uma transferência");
+          
+    if(!from){
+      console.log("A conta que envia é inválida")
+      return;
+    }
+    if(from.balance - quantity < 0){     
+      console.log("Saldo em conta é insuficiente");
+      console.log(`Saldo atual e quantia a ser enviada : ${from.balance} | ${quantity}`)
+      return;
+    }
+
+    console.log(`Saldo antigo da conta que envia e recebe : ${from.balance} | ${to.balance}`)
+
+    from.balance -= quantity;
+    to.balance += quantity;
+
+    console.log(`Saldo novo da conta que envia e recebe : ${from.balance} | ${to.balance}`)
+    return true;
   }
 }
 
