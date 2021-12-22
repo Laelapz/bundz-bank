@@ -4,7 +4,7 @@ class OperationsProcessor {
   constructor(queue, accounts) {
     this.queue = queue;
     this.accounts = this.filterAccounts(accounts);
-    this.historic = [];
+    this.historic = {};
   }
 
   async start(interval=1000) {
@@ -41,19 +41,51 @@ class OperationsProcessor {
 
     if(account){
       if( operation.type === "DEPOSIT"){
-        return this.deposito(account, operation.quantity);
+        const teste = this.deposito(account, operation.quantity);
+        if( teste ){
+          this.historic[`${operation.operationId}`] = operation;
+        }
       }
       
       if( operation.type === "WITHDRAW"){
-        return this.saque(account, operation.quantity);
-        // this.historic.push(operation)
+        const teste = this.saque(account, operation.quantity);
+        if( teste ){
+          this.historic[`${operation.operationId}`] = operation;
+        }
       }
       
       if( operation.type === "TRANSFER"){
         const {from, to} = this.getAccountFromTransfer(operation);
-        return this.transferencia(from, to, operation.quantity);
+        const teste  = this.transferencia(from, to, operation.quantity);
+
+        if( teste ){
+          this.historic[`${operation.operationId}`] = operation;
+        }
+      }
+    
+
+      if( operation.type === "CANCEL"){
+        const teste = this.cancel(operation);
+        
+        if( teste ){
+          delete this.historic[`${operation.operation.operationId}`]
+        }
       }
     }
+
+    if( operation.type === "HISTORIC"){
+      console.log(`Quantia de operações: ${Object.keys(this.historic).length}`)
+      for(const operations in this.historic){
+
+        console.log(`\n${operations}:`);
+        for( const data in this.historic[operations] ){
+          console.log(`${data}: ${this.historic[operations][data]}`)
+        }
+        console.log("\n");
+      }
+      this.historic[`${operation.operationId}`] = operation;
+    }
+
     return;
   }
 
@@ -83,6 +115,7 @@ class OperationsProcessor {
     if((account.balance - quantity) < 0){
       console.log(`Saldo insuficiente`);
       console.log(`Saldo atual : ${account.balance}\n`);
+      return;
 
     }else{
       console.log(`Valor sacado : ${quantity}`);
@@ -122,19 +155,47 @@ class OperationsProcessor {
     to.balance += quantity;
 
     console.log(`Saldo novo da conta que envia e recebe : ${from.balance} | ${to.balance}`)
+    return true;
   }
   
-  cancel(operation, temp){
+  cancel(operation){
     console.log(operation.operation.type)
     if(operation.operation.type === "DEPOSIT"){
       console.log("cancelando um depósito");
+      return this.cancelDeposit(operation.operation)
     }
-    else if(operation.operation.type === "WITHDRAW"){
+
+    if(operation.operation.type === "WITHDRAW"){
       console.log("cancelando um saque");
+      return this.cancelWithdraw(operation.operation);
     }
-    else if(operation.operation.type === "TRANSFER"){
+
+    if(operation.operation.type === "TRANSFER"){
+     const { from, to} = this.getAccountFromTransfer(operation.operation);
       console.log("cancelando uma transferencia");
+      return this.transferencia(to, from, operation.operation.quantity);
     }
+  }
+
+  cancelDeposit(operation){
+    if( (this.accounts[`${operation.account}-${operation.agency}`].balance - operation.quantity) < 0 ){
+      console.log("Saldo insuficiente impossível cancelar o depósito");
+      return;
+    }
+
+    console.log("Depósito cancelado");
+    console.log(`Saldo antes: ${this.accounts[`${operation.account}-${operation.agency}`].balance}`);
+    this.accounts[`${operation.account}-${operation.agency}`].balance -= operation.quantity;
+    console.log(`Saldo depois: ${this.accounts[`${operation.account}-${operation.agency}`].balance}`);
+    return operation.operationId;
+  }
+
+  cancelWithdraw(operation){
+    console.log(`Saldo antes: ${this.accounts[`${operation.account}-${operation.agency}`].balance}`);
+    this.accounts[`${operation.account}-${operation.agency}`].balance += operation.quantity;
+    console.log(`Saldo depois: ${this.accounts[`${operation.account}-${operation.agency}`].balance}`);
+    return operation.operationId;
+
   }
 }
 
